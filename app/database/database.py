@@ -35,9 +35,14 @@ def get_db() -> Generator[Session, None, None]:
     """
     return get_session()
 
-def init_db():
+def init_db(drop_all: bool = False):
     """
-    Инициализация базы данных - создание всех таблиц
+    Инициализация базы данных - создание всех таблиц.
+    
+    Args:
+        drop_all (bool): Если True, удаляет все таблицы перед созданием.
+                         Используйте с осторожностью в production!
     """
-    Base.metadata.drop_all(bind=engine)    # Удаление всех таблиц (осторожно в production!)
-    Base.metadata.create_all(bind=engine)  # Создание всех таблиц
+    if drop_all:
+        Base.metadata.drop_all(bind=engine)
+    Base.metadata.create_all(bind=engine)
