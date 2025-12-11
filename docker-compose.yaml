@@ -2,22 +2,41 @@ version: '3.8'
 
 services:
   app:
-    build: ./app
+    build: ./app  # предполагается, что Dockerfile находится в папке ./app
+    #env_file: 
+    #  - ./app.env  # файл с переменными окружения
+    image: event-planner-api:latest
+    container_name: event-planner-api1337
     volumes:
       - ./app:/app
     depends_on:
-      - database
-      - rabbitmq
+      database:
+        condition: service_started
+      rabbitmq:
+        condition: service_healthy
     networks:
-      - backend
+      - event-planner-network
     healthcheck:
       test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8080/health')"]
       interval: 30s
       timeout: 10s
       retries: 3
       start_period: 20s
-
-  web-proxy:
+  ml_worker:
+    build: ./ml_worker/
+    image: event-planner-ml-worker:latest
+    container_name: event-planner-ml-worker1337
+    restart: unless-stopped
+    volumes:
+      - ./ml_worker:/app
+    depends_on:
+      database:
+        condition: service_started
+      rabbitmq:
+        condition: service_healthy
+    networks:
+      - event-planner-network
+  web:
     image: nginx:latest
     volumes: 
     - ./nginx/nginx.conf:/etc/nginx/conf.d/default.conf
@@ -27,54 +46,70 @@ services:
     depends_on:
       - app
     networks:
-      - backend
-      - frontend
-
+      - event-planner-network
   rabbitmq:
-    image: rabbitmq:management
-    ports:
-      - "5672:5672"
-      - "15672:15672"
+    image: rabbitmq:3.13.1-management-alpine
+    container_name: rabbitmq_for_planner1337
+    hostname: rabbitmq
+    restart: unless-stopped
+    environment:
+      - RABBITMQ_DEFAULT_USER=${RABBITMQ_USER}
+      - RABBITMQ_DEFAULT_PASS=${RABBITMQ_PASS}
+      - RABBITMQ_SERVER_ADDITIONAL_ERL_ARGS=-rabbit disk_free_limit 2147483648
+      - RABBITMQ_MESSAGE_TIMEOUT=600000  # 10 минут в ms
+      - RABBITMQ_DELIVERY_TIMEOUT=300000 # 5 минут
     volumes:
       - rabbitmq_data:/var/lib/rabbitmq
-    restart: on-failure
+    ports:
+      - "15672:15672"  # Management UI
+      - "5672:5672"    # AMQP protocol
+    healthcheck:
+      test: ["CMD", "rabbitmq-diagnostics", "check_running"]
+      interval: 20s
+      timeout: 10s
+      retries: 3
     networks:
-      - backend
-
-  ml_worker:
-    build: ./app
-    command: python -m services.ml_worker
-    volumes:
-      - ./app:/app
-    depends_on:
-      - rabbitmq
-      - database
-    networks:
-      - backend
-    deploy:
-      replicas: 3
-
+      - event-planner-network
+  ollama:
+      image: ollama/ollama
+      container_name: gemma-server-new1337
+      ports:
+        - "11434:11434"
+      volumes:
+        - ollama_data:/root/.ollama
+      restart: unless-stopped
+      environment:
+        - OLLAMA_MODELS=gemma3:1b
+        - OLLAMA_NUM_PARALLEL=1  # Уменьшите для маломощных серверов
+        - OLLAMA_KEEP_ALIVE=5m    # Поддерживать модель в памяти
+      networks:
+        - event-planner-network
+      deploy:
+        resources:
+          limits:
+            cpus: '2'
+            memory: 8G        
   database:
-    image: postgres:latest
+    image: postgres:17-alpine
+    container_name: event-planner-db1337
+    restart: unless-stopped
     environment:
       POSTGRES_DB: mydb
       POSTGRES_USER: user
       POSTGRES_PASSWORD: password
     volumes:
-      - pg_data:/var/lib/postgresql/data
+      - postgres_data:/var/lib/postgresql/data/
     ports:
       - "5432:5432"
     networks:
-      - backend
+      - event-planner-network
 
 volumes:
+  postgres_data:
   rabbitmq_data:
-    driver: local
-  pg_data:
-    driver: local
+  ollama_data:
 
 networks:
-  backend:
-    driver: bridge
-  frontend:
+  event-planner-network:
+    name: event-planner-network
     driver: bridge
