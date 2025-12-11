@@ -1,0 +1,54 @@
+{% extends "base.html" %}
+
+{% block title %}Чат с моделью{% endblock %}
+
+{% block content %}
+<div class="chat-container">
+    <h2>Чат с моделью</h2>
+    
+    {% if error %}
+    <div class="alert alert-danger">
+        {{ error }}
+    </div>
+    {% endif %}
+    
+    <div class="balance-info">
+        <p>Текущий баланс: <strong>{{ current_user.balance.amount }} ₽</strong></p>
+        <p>Каждое сообщение списывает 10 ₽ с вашего баланса</p>
+    </div>
+
+    <div class="chat-history">
+        {% if responses %}
+            {% for response in responses %}
+            <div class="message user-message">
+                <div class="message-header">
+                    <span class="message-sender">Вы</span>
+                    <span class="message-time">{{ response.timestamp }}</span>
+                </div>
+                <div class="message-content">{{ response.original }}</div>
+            </div>
+            <div class="message bot-message">
+                <div class="message-header">
+                    <span class="message-sender">Модель</span>
+                    <span class="message-time">{{ response.timestamp }}</span>
+                </div>
+                <div class="message-content">{{ response.processed }}</div>
+            </div>
+            {% endfor %}
+        {% else %}
+            <p>Пока нет сообщений</p>
+        {% endif %}
+    </div>
+
+    <form method="POST" action="/chat" class="chat-form">
+        <input type="hidden" name="user_id" value="{{ current_user.user_id }}">
+        
+        <div class="form-group">
+            <label for="message">Ваше сообщение</label>
+            <textarea id="message" name="message" class="form-control" rows="4" required></textarea>
+        </div>
+        
+        <button type="submit" class="btn btn-block">Отправить (10 ₽)</button>
+    </form>
+</div>
+{% endblock %}
