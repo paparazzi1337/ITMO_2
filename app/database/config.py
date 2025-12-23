@@ -16,7 +16,7 @@ class Settings(BaseSettings):
     API_VERSION: Optional[str] = None
     
     # JWT settings (добавляем новые поля)
-    SECRET_KEY: str = "fc8b68a9d44a394e28cf2a146d6137ab60da4cea6341616773ed353ce8b0fc8a"
+    SECRET_KEY: str
     ALGORITHM: str = "HS256"
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 30
     

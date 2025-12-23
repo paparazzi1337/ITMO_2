@@ -2,7 +2,7 @@ from typing import Dict, List
 from sqlalchemy.orm import Session
 from models.prediction_history import PredictionTask, PredictionStatus
 from models.base_user import BaseUser
-from models.model import BaseMLModel
+from models.model import MLTaskBase
 
 class PredictionService:
     def __init__(self, db: Session):
@@ -39,7 +39,7 @@ class PredictionService:
             .order_by(PredictionTask.created_at.desc())\
             .all()
 
-    def get_model_history(self, model: BaseMLModel) -> List[PredictionTask]:
+    def get_model_history(self, model: MLTaskBase) -> List[PredictionTask]:
         return self.db.query(PredictionTask)\
             .filter(PredictionTask.model_id == model.model_id)\
             .order_by(PredictionTask.created_at.desc())\

@@ -2,7 +2,8 @@ from decimal import Decimal
 from enum import Enum
 from uuid import uuid4
 from datetime import datetime
-from sqlalchemy import Column, String, Numeric, Enum as SQLEnum, DateTime, ForeignKey
+from zoneinfo import ZoneInfo
+from sqlalchemy import Column, Integer, String, Numeric, Enum as SQLEnum, DateTime, ForeignKey
 from sqlalchemy.orm import relationship
 from database.database import Base
 
@@ -28,7 +29,7 @@ class Transaction(Base):
     status = Column(SQLEnum(TransactionStatus), nullable=False)
     description = Column(String)
     error = Column(String)
-    timestamp = Column(DateTime, default=datetime.utcnow)
+    timestamp = Column(DateTime(timezone=True), default=lambda: datetime.now(ZoneInfo("Europe/Moscow")))
 
     user = relationship("BaseUser", back_populates="transactions")
 
